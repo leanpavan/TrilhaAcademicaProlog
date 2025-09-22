@@ -16,7 +16,7 @@ Sistema Especialista para Recomendação de Trilha Acadêmica desenvolvido utili
 <h2>Questionário interativo</h2>
 <ul>
   <li>Para executar o questinário, basta utilizar o arquivo "base_conhecimneto.pl" e carregá-lo no <a href = "https://swish.swi-prolog.org"> Swish </a>.</li>
-  <li>Após isso, utilize a aba de consultas e digite: iniciar</li>
+  <li>Após isso, utilize a aba de consultas e digite: executar</li>
   <li>Com isso, será exibido perguntas sobre quais disciplinas o usuário tem afinidade, a fim de traçar o perfil do usuário e, por meio disso, exibir qual trilha é mais compátivel com ele.
 </ul>
 

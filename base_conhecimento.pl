@@ -126,7 +126,8 @@ exibir_respostas(N_pergunta, Trilha) :- % caso recursivo
     Proximo is N_pergunta + 1,
     exibir_respostas(Proximo, Trilha).
 
-exibir_respostas(_, _) :- % caso baso, fim das respostas
+exibir_respostas(N_pergunta, _) :- % caso base, fim das respostas
+    \+ resposta(N_pergunta, _), !,
     format("~nFim da execução do programa..").
 
 % exibir_trilhas/1: exibir o ranking de trilhas de acordo em ordem decrescente
@@ -184,5 +185,8 @@ faz_perguntas(N_pergunta) :-
     
     Proximo is N_pergunta + 1,
     faz_perguntas(Proximo).
-faz_perguntas(_) :- %faz_pergunta: caso base, fim das perguntas
+
+%faz_pergunta: caso base, fim das perguntas
+faz_perguntas(N_pergunta) :-
+    \+ pergunta(N_pergunta, _, _), !,
     format("~nFim das perguntas, calculando recomendação... ~n~n").

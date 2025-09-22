@@ -2,9 +2,6 @@
 % FATOS (BASE DE DADOS)
 % ###############################################################################################################
 
-% Predicado dinamico instanciado
-:- dynamic(resposta/2).
-
 % Trilha/2 -> trilha(nome_trilha, desc_trilha)
 trilha(seguranca_informacao, "Trilha que envolve práticas e medidas adotadas para proteger dados e informações contra acessos não autorizados, garantindo sua confidencialidade, integridade e disponibilidade.").
 trilha(desenvolvimento_web, "Trilha que envolve criação de interfaces e sistemas web, através de HTML, CSS, JS, de forma criativa e agradavéis para os usuários.").
@@ -91,40 +88,14 @@ pergunta(9, "Você possui afinidade em HTML, CSS e JS?", html_css_js).
 pergunta(10, "Você possui afinidade em Python?", python).
 pergunta(11, "Você possui interesse em redes neurais?", redes_neurais).
 
-% #############################################################################################################
-% Motor de Inferência e Interface com o Usuário
+% Resposta/2 -> resposta(N_pergunta, Resposta_usuario) // dinamica
+:- dynamic(resposta/2).
 
-% trilha/1
-trilha(T) :- perfil(T, _, _). % Para listar todas as trilhas
+% ###############################################################################################################
+% REGRAS
+% ###############################################################################################################
 
-iniciar :-
-    % Limpa respostas antigas
-    retractall(resposta(_, _)),
-    format("Bem-vindo ao Sistema Especialista para Recomendação de Trilha Acadêmica~n"),
-    format("Para encontrar a melhor trilha para você, responda todas as perguntas com s ou n~n~n"),
-    faz_perguntas,
-    % Após todas as respostas, calcula a melhor trilha
-    recomenda_trilha(Trilha, Pontuacao),
-    trilha(Trilha, Descricao),
-    format("~nTrilha recomendada: ~w.~ndescrição:~w.~ncom pontuação ~w~n", [Trilha, Descricao, Pontuacao]).
-
-faz_perguntas :-
-    pergunta(N_pergunta, Descricao, _Habilidade),
-    format("~n~n--------------------------------------------------~n~n"),
-    format("~w~n",[Descricao]),
-    read_line_to_string(user_input, InputStr),
-    validar_resposta(N_pergunta, InputStr),
-    fail.
-faz_perguntas. % ponto final só pra ter crtz que n vai loopar infinito
-
-    
-
-validar_resposta(N_pergunta, "s") :-
-    assertz(resposta(N_pergunta, s)).
-validar_resposta(N_pergunta, _) :-
-    assertz(resposta(N_pergunta, n)).
-
-
+% calcular_pontuacao/2: calculo dos pesos de acordo com o perfil de cada trilha
 calcular_pontuacao(Trilha, Pontuacao) :-
     findall(Peso, (
         perfil(Trilha, Habilidade, Peso),
@@ -133,23 +104,49 @@ calcular_pontuacao(Trilha, Pontuacao) :-
     ), Pesos),
     soma_lista(Pesos, Pontuacao).
 
-
+% soma_lista/2: realizar soma da lista de pesos
 soma_lista([], 0). % Caso base: a soma dos elementos da lista e vazio
 soma_lista([H|T], Soma) :- % Caso recursivo: para uma lista nao vazia
     soma_lista(T, Soma_resto),
     Soma is H + Soma_resto.
 
-
+% todas_pontuacoes/1: gerar lista de resultados contendo trilha e pontuação total
 todas_pontuacoes(Resultados) :-
     findall((Trilha,Pontuacao),
-        (trilha(Trilha), calcular_pontuacao(Trilha, Pontuacao)),
+        (trilha(Trilha, _), calcular_pontuacao(Trilha, Pontuacao)),
         Resultados).
 
+% exibir_respostas/2: exibir quais foram as respostas do usuario para cada pergunta, com seus pesos
+exibir_respostas(N_pergunta, Trilha) :- % caso recursivo
+    resposta(N_pergunta, Resposta_usuario),
+    perfil(Trilha, Habilidade, Peso),
+    pergunta(N_pergunta,_, Habilidade),
+    
+    format("~w ~t~30| Resposta: ~w - Peso: ~w~n", [Habilidade, Resposta_usuario, Peso]),
+    Proximo is N_pergunta + 1,
+    exibir_respostas(Proximo, Trilha).
 
+exibir_respostas(_, _) :- % caso baso, fim das respostas
+    format("~nFim da execução do programa..").
+
+% exibir_trilhas/1: exibir o ranking de trilhas de acordo em ordem decrescente
+exibir_trilhas(Resultados) :-
+    forall(member((Trilha,Pontuacao), Resultados),
+           format("~w: ~t~31|~w pontos.~n", [Trilha, Pontuacao])).
+
+% recomenda_trilha/2: calcular as pontuações e gerar a recomendação de trilha
 recomenda_trilha(TrilhaMax, PontMax) :-
     todas_pontuacoes(Resultados),
-    max_pontuacao(Resultados, (TrilhaMax, PontMax)).
+    max_pontuacao(Resultados, (TrilhaMax, PontMax)),
+    
+    trilha(TrilhaMax, Descricao),
+    format("~nTrilha recomendada: ~w.~ndescrição:~w.~ncom pontuação ~w~n~n", [TrilhaMax, Descricao, PontMax]),
+    
+    format("Ranking de trilhas por aptidão:~n"),
+	sort(2, @>=, Resultados, ResultadosOrdenados),
+    exibir_trilhas(ResultadosOrdenados).
 
+% max_pontuação/2: calcular a pontuação maxima para recomendação
 max_pontuacao([X], X).   % caso base: so um elemento
 max_pontuacao([(T1,P1),(T2,P2)|Resto], Max) :-
     ( P1 >= P2 ->
@@ -157,3 +154,35 @@ max_pontuacao([(T1,P1),(T2,P2)|Resto], Max) :-
     ; 
         max_pontuacao([(T2,P2)|Resto], Max)
     ).
+
+
+% #############################################################################################################
+% Motor de Inferência e Interface com o Usuário
+
+% execucar/0: fluxo do sistema
+executar :-
+    iniciar,
+    faz_perguntas(1),
+    recomenda_trilha(Trilha, _),
+    format("~nHabilidades/interesses de acordo com suas respostas que levaram a essa recomendação:~n"),
+	exibir_respostas(1, Trilha).
+    
+% iniciar/0: mensagem de inicio
+iniciar :-
+    % Limpa respostas antigas
+    retractall(resposta(_, _)),
+    writeln("Bem-vindo ao Sistema Especialista para Recomendação de Trilha Acadêmica"),
+    writeln("Para encontrar a melhor trilha para você, responda todas as perguntas com s ou n").
+    
+% faz_pergunta/1 - recursivo
+faz_perguntas(N_pergunta) :-
+    pergunta(N_pergunta, Descricao, _),
+    format("~n~n--------------------------------------------------~n~n"),
+    format("~w~n",[Descricao]),
+    read(Resposta_usuario),
+    assertz(resposta(N_pergunta, Resposta_usuario)),
+    
+    Proximo is N_pergunta + 1,
+    faz_perguntas(Proximo).
+faz_perguntas(_) :- %faz_pergunta: caso base, fim das perguntas
+    format("~nFim das perguntas, calculando recomendação... ~n~n").

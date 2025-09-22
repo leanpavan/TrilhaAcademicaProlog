@@ -2,6 +2,9 @@
 % FATOS (BASE DE DADOS)
 % ###############################################################################################################
 
+% Predicado dinamico instanciado
+:- dynamic(resposta/2).
+
 % Trilha/2 -> trilha(nome_trilha, desc_trilha)
 trilha(seguranca_informacao, "Trilha que envolve práticas e medidas adotadas para proteger dados e informações contra acessos não autorizados, garantindo sua confidencialidade, integridade e disponibilidade.").
 trilha(desenvolvimento_web, "Trilha que envolve criação de interfaces e sistemas web, através de HTML, CSS, JS, de forma criativa e agradavéis para os usuários.").
@@ -91,32 +94,43 @@ pergunta(11, "Você possui interesse em redes neurais?", redes_neurais).
 % #############################################################################################################
 % Motor de Inferência e Interface com o Usuário
 
+% trilha/1
+trilha(T) :- perfil(T, _, _). % Para listar todas as trilhas
+
 iniciar :-
-    format("Bem-vindo ao Sistema Especialista para Recomendação
-de Trilha Acadêmica~n"),
-    format("Para encontrar a melhor trilha para você, responda todas as perguntas com s ou n ~n~n"),
-    faz_perguntas.
+    % Limpa respostas antigas
+    retractall(resposta(_, _)),
+    format("Bem-vindo ao Sistema Especialista para Recomendação de Trilha Acadêmica~n"),
+    format("Para encontrar a melhor trilha para você, responda todas as perguntas com s ou n~n~n"),
+    faz_perguntas,
+    % Após todas as respostas, calcula a melhor trilha
+    recomenda_trilha(Trilha, Pontuacao),
+    trilha(Trilha, Descricao),
+    format("~nTrilha recomendada: ~w.~ndescrição:~w.~ncom pontuação ~w~n", [Trilha, Descricao, Pontuacao]).
 
 faz_perguntas :-
-	pergunta(N_pergunta, Descricao, Habilidade_associada),
+    pergunta(N_pergunta, Descricao, _Habilidade),
     format("~n~n--------------------------------------------------~n~n"),
     format("~w~n",[Descricao]),
     read_line_to_string(user_input, InputStr),
-	validar_resposta(N_pergunta,InputStr),
+    validar_resposta(N_pergunta, InputStr),
     fail.
-    faz_perguntas.
+faz_perguntas. % ponto final só pra ter crtz que n vai loopar infinito
+
     
 
-validar_resposta(N_pergunta, 's') :-
+validar_resposta(N_pergunta, "s") :-
     assertz(resposta(N_pergunta, s)).
 validar_resposta(N_pergunta, _) :-
     assertz(resposta(N_pergunta, n)).
 
 
 calcular_pontuacao(Trilha, Pontuacao) :-
-    findall(Peso, (perfil(Trilha, Habilidade_associada, Peso),
-            resposta(Habilidade_associada, sim)),
-    		Pesos),
+    findall(Peso, (
+        perfil(Trilha, Habilidade, Peso),
+        pergunta(N_pergunta, _, Habilidade), % Ignora a descrição da pergunta
+        resposta(N_pergunta, s)   % tava escrito "sim" ao inves de "s"
+    ), Pesos),
     soma_lista(Pesos, Pontuacao).
 
 
@@ -126,4 +140,20 @@ soma_lista([H|T], Soma) :- % Caso recursivo: para uma lista nao vazia
     Soma is H + Soma_resto.
 
 
-%recomenda(Melhor_trilha, Melhor_pontuacao) :-
+todas_pontuacoes(Resultados) :-
+    findall((Trilha,Pontuacao),
+        (trilha(Trilha), calcular_pontuacao(Trilha, Pontuacao)),
+        Resultados).
+
+
+recomenda_trilha(TrilhaMax, PontMax) :-
+    todas_pontuacoes(Resultados),
+    max_pontuacao(Resultados, (TrilhaMax, PontMax)).
+
+max_pontuacao([X], X).   % caso base: so um elemento
+max_pontuacao([(T1,P1),(T2,P2)|Resto], Max) :-
+    ( P1 >= P2 ->
+        max_pontuacao([(T1,P1)|Resto], Max)
+    ; 
+        max_pontuacao([(T2,P2)|Resto], Max)
+    ).

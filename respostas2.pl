@@ -1,0 +1,11 @@
+resposta(1, s).
+resposta(2, n).
+resposta(3, n).
+resposta(4, s).
+resposta(5, s).
+resposta(6, s).
+resposta(7, s).
+resposta(8, s).
+resposta(9, n).
+resposta(10, n).
+resposta(11, s).
